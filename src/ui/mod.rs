@@ -575,7 +575,7 @@ impl Ui {
                 "Panel portable de canales de YouTube.\n\nAtajos: Ctrl+N añadir · Ctrl+F buscar · Ctrl+L limpiar filtros · Ctrl+1 cuadrícula · Ctrl+2 lista\n\nBase de datos: {}",
                 self.db_path.display()
             ))
-            .license_type(gtk::License::Gpl30)
+            .license_type(gtk::License::MitX11)
             .build();
 
         dialog.present(Some(&self.window));
