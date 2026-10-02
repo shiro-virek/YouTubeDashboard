@@ -1,0 +1,23 @@
+[package]
+name = "youtube-dashboard"
+version = "0.1.0"
+edition = "2021"
+rust-version = "1.92"
+description = "Portable desktop dashboard to organize and open YouTube channels"
+license = "GPL-3.0-or-later"
+publish = false
+
+[[bin]]
+name = "ytdash"
+path = "src/main.rs"
+
+[dependencies]
+gtk = { package = "gtk4", version = "0.11", features = ["v4_22"] }
+adw = { package = "libadwaita", version = "0.9", features = ["v1_9"] }
+rusqlite = { version = "0.40", features = ["bundled"] }
+
+[profile.release]
+opt-level = "z"
+lto = true
+codegen-units = 1
+strip = true
