@@ -1,104 +1,93 @@
-# ytdash — panel de canales de YouTube
+# YouTube Dashboard
 
-Aplicación de escritorio para Linux, portable y sin dependencias de Node.js,
-Python ni Java. Gestiona una lista personal de canales de YouTube en un único
-archivo SQLite y abre cada canal en tu navegador con un clic.
+A portable Linux desktop application to organize and open YouTube channels. Built with Rust, GTK 4, libadwaita, and an embedded SQLite database — everything you need is a single binary plus one `.db` file that can live next to the executable.
 
-## Características
+## Features
 
-- **Alta manual** de canales con nombre, URL y etiquetas, desde el botón
-  «+» de la cabecera o con `Ctrl+N`.
-- **Vista de cuadrícula o de lista**, conmutable desde la cabecera.
-- **Reordenar arrastrando y soltando** las tarjetas.
-- **Filtrar por nombre** (varios términos, todos deben coincidir).
-- **Filtrar por etiquetas** mediante las chips de la barra superior.
-- **Clic en un canal para abrirlo** en el navegador del sistema.
-- **Copiar URL**, editar y eliminar desde el menú contextual de cada tarjeta.
-- Menú de Filters, Atajos, Ayuda y Acerca de con las acciones habituales.
+- **Manual channel management**: add channels with a name, URL, and optional tags.
+- **Grid or list views**: switch between compact and spacious layouts.
+- **Drag and drop reordering**: reorder visible channels by dragging their cards.
+- **Smart filtering**: search by name (multi-term AND, case- and diacritic-insensitive). Filter by tags (OR semantics across selected tags).
+- **Open in your browser**: click a channel to open it in your preferred browser, or configure a custom command in Preferences.
+- **Double-click to open**: double-click any card to open its channel.
+- **Context menu**: copy the URL, edit, or delete from each card.
+- **Configurable browser**: choose system default, a detected browser, or a custom command (saved to `ytdash.conf` next to the database for portability).
+- **Portable by design**: prefers `ytdash.db` next to the executable. Falls back to `$XDG_DATA_HOME/ytdash/` if the executable directory is not writable. Override with `--db` or `YTDASH_DB`. WAL is checkpointed on exit so the `.db` file stays self-contained.
 
-## Requisitos
+## Requirements
 
-Solo las bibliotecas de GTK 4 y libadwaita del sistema. **SQLite va
-embebido**, así que no hace falta instalar `libsqlite3` ni nada más.
+Only GTK 4 and libadwaita system libraries are required. SQLite is embedded, so no separate `libsqlite3` installation is needed.
 
-En Debian/Ubuntu:
-
+### Debian/Ubuntu
 ```sh
 sudo apt install libgtk-4-dev libadwaita-1-dev build-essential pkg-config
 ```
 
-En Fedora:
-
+### Fedora
 ```sh
 sudo dnf install gtk4-devel libadwaita-devel gcc pkgconf-pkg-config
 ```
 
-Para ejecutar el binario ya compilado basta con tener GTK 4 y libadwaita
-presentes en el sistema.
+Prebuilt binaries only need GTK 4 and libadwaita installed on the target system.
 
-## Compilar
+## Building
 
 ```sh
 cargo build --release
 ```
 
-El ejecutable queda en `target/release/ytdash`. Se genera un único binario:
-cópialo junto con su archivo `.db` y la aplicación es portable.
+The binary will be at `target/release/ytdash`. For maximum portability, copy it alongside its `.db` and `.conf` files.
 
-## Uso
+## Usage
 
 ```sh
-ytdash                    # usa la base de datos portátil
-ytdash --db rutas/mis.db  # usa una base de datos concreta
-ytdash --help
+ytdash                    # use portable database next to executable
+ytdash --db /path/to.db   # use a specific database
+ytdash --help             # show help
+ytdash --version          # show version
 ```
 
-Atajos de teclado:
+### Keyboard shortcuts
 
-| Atajo          | Acción                    |
-| -------------- | ------------------------- |
-| `Ctrl+N`       | Añadir canal              |
-| `Ctrl+F`       | Buscar                    |
-| `Ctrl+L`       | Limpiar filtros           |
-| `Ctrl+1`       | Vista de cuadrícula       |
-| `Ctrl+2`       | Vista de lista            |
-| `Ctrl+Q`       | Salir                     |
+| Shortcut | Action |
+| --- | --- |
+| `Ctrl+N` | Add channel |
+| `Ctrl+F` | Focus search |
+| `Ctrl+L` | Clear filters |
+| `Ctrl+1` | Grid view |
+| `Ctrl+2` | List view |
+| `Ctrl+,` | Open Preferences |
+| `Ctrl+Q` | Quit |
 
-## Dónde se guarda la base de datos
+## Data location
 
-`ytdash` resuelve la ruta en este orden:
+`ytdash` resolves the database path in this order:
 
-1. El valor de `--db` / `-d` / `--db=...`.
-2. La variable de entorno `YTDASH_DB`.
-3. `ytdash.db` junto al ejecutable —comportamiento portable— **si el
-   directorio permite escritura**.
-4. `$XDG_DATA_HOME/ytdash/ytdash.db` como alternativa.
+1. `--db` / `-d` / `--db=...`
+2. `YTDASH_DB` environment variable
+3. `ytdash.db` next to the executable (portable) **if the directory is writable**
+4. `$XDG_DATA_HOME/ytdash/ytdash.db`
 
-Al cerrar, la aplicación hace un *checkpoint* del WAL para que el archivo
-`.db` quede completo y se pueda copiar en otro equipo o en un pendrive sin
-perder datos.
+Preferences are stored in `ytdash.conf` in the same directory as the database, so both files travel together when copied to a USB stick.
 
-Para localizar el archivo exacto, usa la acción **Abrir carpeta de datos**
-del menú principal.
+To locate the current data folder, use **Open data folder** from the main menu.
 
-## Formato de los enlaces
+## URL formats
 
-Se aceptan y normalizan automáticamente:
+Accepted and normalized automatically:
 
 - `@handle`
 - `youtube.com/@handle`
 - `youtube.com/c/Name`
-- `youtube.com/channel/UC…`
-- `youtube.com/user/name`
-- `youtube.com/@handle/videos`
+- `youtube.com/user/Name`
+- `youtube.com/channel/UC...`
+- `youtube.com/@handle/videos` (and other subpaths are preserved)
 
-Si escribes solo la URL y dejas el nombre vacío, se genera uno a partir del
-enlace. El prefijo `@handle/videos` se recorta al manejador.
+If you leave the name empty, it will be derived from the URL. The `/videos` suffix is trimmed from the handle label when appropriate.
 
-Las etiquetas se separan por comas; no distinguen mayúsculas de minúsculas y
-se eliminan automáticamente cuando ningún canal las usa.
+Tags are comma-separated, case-insensitive, and automatically removed when no channel uses them.
 
-## Desarrollo
+## Development
 
 ```sh
 cargo fmt
@@ -106,26 +95,26 @@ cargo clippy --all-targets -- -D warnings
 cargo test
 ```
 
-La lógica de dominio (`model.rs`), la persistencia (`db.rs`) y el estado de la
-aplicación (`state.rs`) están separados de la interfaz (`ui/`) y cubiertos por
-tests unitarios que no necesitan pantalla.
+Domain logic (`model.rs`), persistence (`db.rs`), and application state (`state.rs`) are decoupled from the UI (`ui/`) and covered by unit tests that run headlessly.
 
-## Estructura
+## Project structure
 
-```
+```text
 src/
-├── main.rs        punto de entrada y argumentos de línea de comandos
-├── model.rs       dominio: canales, URLs, búsqueda, etiquetas y orden
-├── db.rs          esquema y acceso SQLite, resolución de ruta portable
-├── state.rs       estado en memoria y operaciones de la aplicación
+├── config.rs      Preferences and browser launch logic
+├── main.rs        CLI entry point and application setup
+├── model.rs       Domain: channels, URL normalization, filtering, tags, ordering
+├── db.rs          SQLite schema, CRUD, portable DB path resolution
+├── state.rs       In-memory app state and operations
 └── ui/
-    ├── mod.rs     ventana, cabecera, filtros, render y acciones
-    ├── card.rs    tarjeta de canal, menú contextual y arrastrar y soltar
-    ├── editor.rs  diálogo de alta y edición
-    ├── avatar.rs  avatares circulares generados a partir del nombre
-    └── styles.rs  CSS de la aplicación
+    ├── mod.rs     Window, header, filters, rendering, actions
+    ├── card.rs    Channel card, context menu, drag & drop
+    ├── editor.rs  Add/edit channel dialog
+    ├── prefs.rs   Preferences dialog (browser selection)
+    ├── avatar.rs  Circular generated avatars
+    └── styles.rs  Application CSS
 ```
 
-## Licencia
+## License
 
-GPL-3.0-or-later.
+MIT
