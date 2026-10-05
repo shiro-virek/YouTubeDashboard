@@ -132,6 +132,7 @@ impl App {
     }
 
     /// Renames a global tag. Channels keep their assignments.
+    #[allow(dead_code)]
     pub fn rename_tag(&mut self, old: &str, new_name: &str) -> Result<()> {
         let new_fold = model::fold(new_name);
         if new_fold.is_empty() {
@@ -151,6 +152,7 @@ impl App {
     }
 
     /// Deletes a global tag from every channel that uses it.
+    #[allow(dead_code)]
     pub fn delete_tag(&mut self, tag: &str) -> Result<()> {
         self.db.delete_tag(tag)?;
         self.reload()

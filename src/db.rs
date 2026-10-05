@@ -190,6 +190,7 @@ impl Database {
     }
 
 
+    #[allow(dead_code)]
     pub fn rename_tag(&self, old: &str, new_name: &str) -> Result<()> {
         let tx = self.conn.unchecked_transaction()?;
         // Ensure new tag exists or create it
@@ -219,6 +220,7 @@ impl Database {
         Ok(())
     }
 
+    #[allow(dead_code)]
     pub fn merge_tags(&self, old: &str, target: &str) -> Result<()> {
         let tx = self.conn.unchecked_transaction()?;
         let target_id: i64 = tx
@@ -241,6 +243,7 @@ impl Database {
         Ok(())
     }
 
+    #[allow(dead_code)]
     pub fn delete_tag(&self, tag: &str) -> Result<()> {
         let tx = self.conn.unchecked_transaction()?;
         let tag_id: i64 = tx
