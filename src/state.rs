@@ -131,6 +131,31 @@ impl App {
         self.clear_tag_filter();
     }
 
+    /// Renames a global tag. Channels keep their assignments.
+    pub fn rename_tag(&mut self, old: &str, new_name: &str) -> Result<()> {
+        let new_fold = model::fold(new_name);
+        if new_fold.is_empty() {
+            return Ok(());
+        }
+        let old_fold = model::fold(old);
+        if old_fold == new_fold {
+            return Ok(());
+        }
+        // If the new name already exists, merge into it and delete the old one.
+        if self.tags.iter().any(|t| model::fold(t) == new_fold) {
+            self.db.merge_tags(old, new_name)?;
+        } else {
+            self.db.rename_tag(old, new_name)?;
+        }
+        self.reload()
+    }
+
+    /// Deletes a global tag from every channel that uses it.
+    pub fn delete_tag(&mut self, tag: &str) -> Result<()> {
+        self.db.delete_tag(tag)?;
+        self.reload()
+    }
+
     /// Stores a new browser preference and persists it next to the database.
     pub fn set_browser(&mut self, browser: Browser) -> std::io::Result<()> {
         self.config.browser = browser;

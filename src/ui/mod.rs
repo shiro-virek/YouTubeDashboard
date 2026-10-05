@@ -302,7 +302,7 @@ impl Ui {
             chip.set_active(selected);
 
             let ui_weak = Rc::downgrade(self);
-            let tag = tag.clone();
+            let tag_clone = tag.clone();
             chip.connect_toggled(move |_| {
                 let Some(ui) = ui_weak.upgrade() else {
                     return;
@@ -310,9 +310,19 @@ impl Ui {
                 if ui.rendering.get() {
                     return;
                 }
-                ui.app.borrow_mut().toggle_tag(&tag);
+                ui.app.borrow_mut().toggle_tag(&tag_clone);
                 ui.refresh();
             });
+            let ui_weak2 = Rc::downgrade(self);
+            let tag_for_menu = tag.clone();
+            let chip_menu = chip.clone();
+            let gesture = gtk::GestureClick::builder().button(gtk::gdk::BUTTON_SECONDARY).build();
+            gesture.connect_released(move |_, _, x, y| {
+                if let Some(ui) = ui_weak2.upgrade() {
+                    ui.open_tag_menu(&chip_menu, &tag_for_menu, x, y);
+                }
+            });
+            chip.add_controller(gesture);
 
             let cell = gtk::FlowBoxChild::new();
             cell.set_child(Some(&chip));
@@ -563,6 +573,94 @@ impl Ui {
                 }
             },
         );
+    }
+
+    pub fn open_tag_menu(self: &Rc<Self>, parent: &gtk::ToggleButton, tag: &str, x: f64, y: f64) {
+        let popover = gtk::Popover::new();
+        popover.set_has_arrow(false);
+        popover.set_parent(parent);
+        let menu = gtk::Box::new(gtk::Orientation::Vertical, 4);
+        menu.set_margin_top(6);
+        menu.set_margin_bottom(6);
+        menu.set_margin_start(6);
+        menu.set_margin_end(6);
+        popover.set_child(Some(&menu));
+        let ui_weak = Rc::downgrade(self);
+        let tag_for_rename = tag.to_string();
+        let btn = gtk::Button::new();
+        btn.set_child(Some(&{
+            let r = gtk::Box::new(gtk::Orientation::Horizontal, 10);
+            r.append(&gtk::Image::from_icon_name("document-edit-symbolic"));
+            r.append(&gtk::Label::new(Some("Renombrar etiqueta")));
+            r.upcast::<gtk::Widget>()
+        }));
+        btn.add_css_class("flat");
+        btn.set_hexpand(true);
+        let ui_weak_r = ui_weak.clone();
+        let t = tag_for_rename.clone();
+        btn.connect_clicked(move |_| {
+            if let Some(ui) = ui_weak_r.upgrade() {
+                ui.rename_tag_dialog(&t);
+            }
+        });
+        menu.append(&btn);
+        let ui_weak_d = Rc::downgrade(self);
+        let t2 = tag.to_string();
+        let btn = gtk::Button::new();
+        btn.set_child(Some(&{
+            let r = gtk::Box::new(gtk::Orientation::Horizontal, 10);
+            r.append(&gtk::Image::from_icon_name("user-trash-symbolic"));
+            r.append(&gtk::Label::new(Some("Eliminar etiqueta")));
+            r.upcast::<gtk::Widget>()
+        }));
+        btn.add_css_class("flat");
+        btn.set_hexpand(true);
+        btn.add_css_class("error");
+        btn.connect_clicked(move |_| {
+            if let Some(ui) = ui_weak_d.upgrade() {
+                ui.delete_tag_confirm(&t2);
+            }
+        });
+        menu.append(&btn);
+        popover.set_pointing_to(Some(&gtk::gdk::Rectangle::new(x as i32, y as i32, 1, 1)));
+        popover.popup();
+    }
+    pub fn rename_tag_dialog(self: &Rc<Self>, tag: &str) {
+        let dialog = adw::Dialog::new(); dialog.set_title("Renombrar etiqueta"); dialog.set_content_width(420);
+        let toolbar = adw::ToolbarView::new(); let header = adw::HeaderBar::new();
+        let cancel = gtk::Button::with_label("Cancelar"); cancel.add_css_class("flat");
+        let weak=dialog.downgrade(); cancel.connect_clicked(move |_| if let Some(d)=weak.upgrade(){d.force_close();});
+        header.pack_start(&cancel);
+        let save_btn = gtk::Button::with_label("Guardar"); save_btn.add_css_class("suggested-action"); header.pack_end(&save_btn);
+        let form = gtk::Box::new(gtk::Orientation::Vertical,10); form.set_margin_top(20); form.set_margin_bottom(20); form.set_margin_start(20); form.set_margin_end(20);
+        let name = gtk::Entry::new(); name.set_text(tag); name.set_activates_default(true);
+        let row = gtk::Box::new(gtk::Orientation::Horizontal,10);
+        let icon = gtk::Image::from_icon_name("tag-symbolic");
+        let lbl = gtk::Label::new(Some("Nuevo nombre"));
+        row.append(&icon); row.append(&lbl); form.append(&row); form.append(&name);
+        toolbar.add_top_bar(&header); toolbar.set_content(Some(&form)); dialog.set_child(Some(&toolbar));
+        let ui_weak=Rc::downgrade(self); let tag_old=tag.to_string(); let weak=dialog.downgrade(); let name_clone=name.clone();
+        save_btn.connect_clicked(move |_| {
+            let Some(ui)=ui_weak.upgrade() else{return}; let Some(d)=weak.upgrade() else{return};
+            let newn=name_clone.text().trim().to_string(); if newn.is_empty(){return;}
+            if let Err(e)=ui.app.borrow_mut().rename_tag(&tag_old,&newn){ ui.notify(&format!("No se pudo renombrar: {e}")); return; }
+            ui.refresh(); d.force_close();
+        });
+        dialog.set_default_widget(Some(&save_btn)); dialog.present(Some(&self.window));
+    }
+    pub fn delete_tag_confirm(self: &Rc<Self>, tag: &str) {
+        let dialog = adw::AlertDialog::new(Some("Eliminar etiqueta"), Some(&format!("¿Eliminar la etiqueta «{}» de todos los canales?", tag)));
+        dialog.add_response("cancel","Cancelar"); dialog.add_response("delete","Eliminar");
+        dialog.set_response_appearance("delete", adw::ResponseAppearance::Destructive);
+        let ui_weak=Rc::downgrade(self); let tag_clone=tag.to_string();
+        dialog.connect_response(None, move |_,res| {
+            if res=="delete" {
+                if let Some(ui)=ui_weak.upgrade() {
+                    if let Err(e)=ui.app.borrow_mut().delete_tag(&tag_clone){ ui.notify(&format!("No se pudo eliminar: {e}")); } else { ui.refresh(); }
+                }
+            }
+        });
+        dialog.present(Some(&self.window));
     }
 
     fn show_about(&self) {

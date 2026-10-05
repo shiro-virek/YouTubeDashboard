@@ -189,6 +189,68 @@ impl Database {
             .ok();
     }
 
+
+    pub fn rename_tag(&self, old: &str, new_name: &str) -> Result<()> {
+        let tx = self.conn.unchecked_transaction()?;
+        // Ensure new tag exists or create it
+
+        let new_id = {
+            let mut stmt = tx.prepare_cached(
+                "INSERT INTO tags(name) VALUES(?) ON CONFLICT(name) DO UPDATE SET name=excluded.name RETURNING id",
+            )?;
+            stmt.query_row([new_name], |row| row.get::<_, i64>(0))?
+        };
+        // Get old tag id
+        let old_id: i64 = tx
+            .prepare_cached("SELECT id FROM tags WHERE name COLLATE NOCASE = ?")?
+            .query_row([old], |row| row.get(0))?;
+        if old_id == new_id {
+            tx.commit()?;
+            return Ok(());
+        }
+        // Reassign channel_tags from old_id to new_id, avoiding duplicates
+        tx.execute(
+            "INSERT OR IGNORE INTO channel_tags(channel_id, tag_id) SELECT channel_id, ? FROM channel_tags WHERE tag_id = ?",
+            rusqlite::params![new_id, old_id],
+        )?;
+        tx.execute("DELETE FROM channel_tags WHERE tag_id = ?", [old_id])?;
+        tx.execute("DELETE FROM tags WHERE id = ?", [old_id])?;
+        tx.commit()?;
+        Ok(())
+    }
+
+    pub fn merge_tags(&self, old: &str, target: &str) -> Result<()> {
+        let tx = self.conn.unchecked_transaction()?;
+        let target_id: i64 = tx
+            .prepare_cached("SELECT id FROM tags WHERE name COLLATE NOCASE = ?")?
+            .query_row([target], |row| row.get(0))?;
+        let old_id: i64 = tx
+            .prepare_cached("SELECT id FROM tags WHERE name COLLATE NOCASE = ?")?
+            .query_row([old], |row| row.get(0))?;
+        if old_id == target_id {
+            tx.commit()?;
+            return Ok(());
+        }
+        tx.execute(
+            "INSERT OR IGNORE INTO channel_tags(channel_id, tag_id) SELECT channel_id, ? FROM channel_tags WHERE tag_id = ?",
+            rusqlite::params![target_id, old_id],
+        )?;
+        tx.execute("DELETE FROM channel_tags WHERE tag_id = ?", [old_id])?;
+        tx.execute("DELETE FROM tags WHERE id = ?", [old_id])?;
+        tx.commit()?;
+        Ok(())
+    }
+
+    pub fn delete_tag(&self, tag: &str) -> Result<()> {
+        let tx = self.conn.unchecked_transaction()?;
+        let tag_id: i64 = tx
+            .prepare_cached("SELECT id FROM tags WHERE name COLLATE NOCASE = ?")?
+            .query_row([tag], |row| row.get(0))?;
+        tx.execute("DELETE FROM channel_tags WHERE tag_id = ?", [tag_id])?;
+        tx.execute("DELETE FROM tags WHERE id = ?", [tag_id])?;
+        tx.commit()?;
+        Ok(())
+    }
     fn sync_tags(tx: &Transaction<'_>, channel_id: i64, tags: &[String]) -> Result<()> {
         tx.execute(
             "DELETE FROM channel_tags WHERE channel_id = ?1",

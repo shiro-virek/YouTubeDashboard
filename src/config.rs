@@ -56,8 +56,6 @@ pub struct Config {
     pub browser: Browser,
 }
 
-
-
 impl Config {
     /// Reads the config, silently falling back to the defaults when the file
     /// is missing or damaged. A broken config must never stop the app.
