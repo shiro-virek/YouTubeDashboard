@@ -651,10 +651,11 @@ impl Ui {
         save_btn.connect_clicked(move |_| {
             let Some(d)=weak.upgrade() else{return};
             let ui_ref = ui_weak.clone(); let newn=name_clone.text().trim().to_string(); if newn.is_empty(){ d.force_close(); return; }
+            let tag_old2 = tag_old.clone();
             d.close();
             glib::idle_add_local_once(move || {
                 if let Some(ui)=ui_ref.upgrade() {
-                    if let Err(e)=ui.app.borrow_mut().rename_tag(&tag_old,&newn){ ui.notify(&format!("No se pudo renombrar: {e}")); }
+                    if let Err(e)=ui.app.borrow_mut().rename_tag(&tag_old2,&newn){ ui.notify(&format!("No se pudo renombrar: {e}")); }
                     else { ui.refresh(); }
                 }
             });
