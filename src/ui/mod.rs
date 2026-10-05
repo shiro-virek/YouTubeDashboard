@@ -661,11 +661,18 @@ impl Ui {
         dialog.add_response("cancel","Cancelar"); dialog.add_response("delete","Eliminar");
         dialog.set_response_appearance("delete", adw::ResponseAppearance::Destructive);
         let ui_weak=Rc::downgrade(self); let tag_clone=tag.to_string();
-        dialog.connect_response(None, move |_,res| {
+        dialog.connect_response(None, move |dialog, res| {
             if res=="delete" {
-                if let Some(ui)=ui_weak.upgrade() {
-                    if let Err(e)=ui.app.borrow_mut().delete_tag(&tag_clone){ ui.notify(&format!("No se pudo eliminar: {e}")); } else { ui.refresh(); }
-                }
+                let ui_ref = ui_weak.clone();
+                let tag_c = tag_clone.clone();
+                dialog.close();
+                glib::idle_add_local_once(move || {
+                    if let Some(ui)=ui_ref.upgrade() {
+                        if let Err(e)=ui.app.borrow_mut().delete_tag(&tag_c){ ui.notify(&format!("No se pudo eliminar: {e}")); } else { ui.refresh(); }
+                    }
+                });
+            } else {
+                dialog.close();
             }
         });
         dialog.present(Some(&self.window));
