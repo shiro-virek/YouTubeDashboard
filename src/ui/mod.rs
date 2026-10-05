@@ -603,9 +603,13 @@ impl Ui {
             if let Some(p) = popover_weak.upgrade() {
                 p.popdown();
             }
-            if let Some(ui) = ui_weak_r.upgrade() {
-                ui.rename_tag_dialog(&t);
-            }
+            let ui_ref = ui_weak_r.clone();
+            let t3 = t.clone();
+            glib::idle_add_local_once(move || {
+                if let Some(ui) = ui_ref.upgrade() {
+                    ui.rename_tag_dialog(&t3);
+                }
+            });
         });
         menu.append(&btn);
         let ui_weak_d = Rc::downgrade(self);
@@ -625,9 +629,13 @@ impl Ui {
             if let Some(p) = popover_weak.upgrade() {
                 p.popdown();
             }
-            if let Some(ui) = ui_weak_d.upgrade() {
-                ui.delete_tag_confirm(&t2);
-            }
+            let ui_ref = ui_weak_d.clone();
+            let t3 = t2.clone();
+            glib::idle_add_local_once(move || {
+                if let Some(ui) = ui_ref.upgrade() {
+                    ui.delete_tag_confirm(&t3);
+                }
+            });
         });
         menu.append(&btn);
         popover.set_pointing_to(Some(&gtk::gdk::Rectangle::new(x as i32, y as i32, 1, 1)));
