@@ -600,7 +600,7 @@ impl Ui {
             if let Some(p) = popover_weak.upgrade() { p.popdown(); }
             let ui_ref = ui_weak_r.clone();
             let tr = t_r.clone();
-            glib::timeout_add_local_once(std::time::Duration::from_millis(50), move || {
+            glib::timeout_add_local_once(std::time::Duration::from_millis(150), move || {
                 if let Some(ui)=ui_ref.upgrade(){ ui.rename_tag_safe(&tr); }
             });
         });
@@ -620,7 +620,7 @@ impl Ui {
             if let Some(p) = popover_weak2.upgrade() { p.popdown(); }
             let ui_ref = ui_weak_d.clone();
             let td = t_d.clone();
-            glib::timeout_add_local_once(std::time::Duration::from_millis(50), move || {
+            glib::timeout_add_local_once(std::time::Duration::from_millis(150), move || {
                 if let Some(ui)=ui_ref.upgrade(){ ui.delete_tag_safe(&td); }
             });
         });
@@ -650,9 +650,9 @@ impl Ui {
             if newn.is_empty(){ d.force_close(); return; }
             let to = tag_old.clone();
             d.close();
-            glib::timeout_add_local_once(std::time::Duration::from_millis(30), move || {
+            glib::timeout_add_local_once(std::time::Duration::from_millis(100), move || {
                 if let Some(ui)=ui_ref.upgrade(){
-                    if let Err(e)=ui.app.borrow_mut().rename_tag(&to,&newn){ ui.notify(&format!("No se pudo renombrar: {e}")); } else { ui.refresh(); }
+                    if let Err(e)=ui.app.borrow_mut().rename_tag(&to,&newn){ ui.notify(&format!("No se pudo renombrar: {e}")); } else { let ui2 = ui.clone(); glib::timeout_add_local_once(std::time::Duration::from_millis(200), move || { ui2.refresh(); }); }
                 }
             });
         });
@@ -668,9 +668,9 @@ impl Ui {
                 let ui_ref = ui_weak.clone();
                 let tc = tag_c.clone();
                 dialog.close();
-                glib::timeout_add_local_once(std::time::Duration::from_millis(30), move || {
+                glib::timeout_add_local_once(std::time::Duration::from_millis(100), move || {
                     if let Some(ui)=ui_ref.upgrade(){
-                        if let Err(e)=ui.app.borrow_mut().delete_tag(&tc){ ui.notify(&format!("No se pudo eliminar: {e}")); } else { ui.refresh(); }
+                        if let Err(e)=ui.app.borrow_mut().delete_tag(&tc){ ui.notify(&format!("No se pudo eliminar: {e}")); } else { let ui2 = ui.clone(); glib::timeout_add_local_once(std::time::Duration::from_millis(200), move || { ui2.refresh(); }); }
                     }
                 });
             } else {
