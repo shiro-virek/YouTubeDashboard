@@ -587,6 +587,7 @@ impl Ui {
         popover.set_child(Some(&menu));
         let ui_weak = Rc::downgrade(self);
         let tag_for_rename = tag.to_string();
+        let popover_weak = popover.downgrade();
         let btn = gtk::Button::new();
         btn.set_child(Some(&{
             let r = gtk::Box::new(gtk::Orientation::Horizontal, 10);
@@ -599,6 +600,9 @@ impl Ui {
         let ui_weak_r = ui_weak.clone();
         let t = tag_for_rename.clone();
         btn.connect_clicked(move |_| {
+            if let Some(p) = popover_weak.upgrade() {
+                p.popdown();
+            }
             if let Some(ui) = ui_weak_r.upgrade() {
                 ui.rename_tag_dialog(&t);
             }
@@ -606,6 +610,7 @@ impl Ui {
         menu.append(&btn);
         let ui_weak_d = Rc::downgrade(self);
         let t2 = tag.to_string();
+        let popover_weak = popover.downgrade();
         let btn = gtk::Button::new();
         btn.set_child(Some(&{
             let r = gtk::Box::new(gtk::Orientation::Horizontal, 10);
@@ -617,6 +622,9 @@ impl Ui {
         btn.set_hexpand(true);
         btn.add_css_class("error");
         btn.connect_clicked(move |_| {
+            if let Some(p) = popover_weak.upgrade() {
+                p.popdown();
+            }
             if let Some(ui) = ui_weak_d.upgrade() {
                 ui.delete_tag_confirm(&t2);
             }
