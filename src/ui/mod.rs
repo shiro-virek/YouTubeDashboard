@@ -649,10 +649,15 @@ impl Ui {
         toolbar.add_top_bar(&header); toolbar.set_content(Some(&form)); dialog.set_child(Some(&toolbar));
         let ui_weak=Rc::downgrade(self); let tag_old=tag.to_string(); let weak=dialog.downgrade(); let name_clone=name.clone();
         save_btn.connect_clicked(move |_| {
-            let Some(ui)=ui_weak.upgrade() else{return}; let Some(d)=weak.upgrade() else{return};
-            let newn=name_clone.text().trim().to_string(); if newn.is_empty(){return;}
-            if let Err(e)=ui.app.borrow_mut().rename_tag(&tag_old,&newn){ ui.notify(&format!("No se pudo renombrar: {e}")); return; }
-            ui.refresh(); d.force_close();
+            let Some(d)=weak.upgrade() else{return};
+            let ui_ref = ui_weak.clone(); let newn=name_clone.text().trim().to_string(); if newn.is_empty(){ d.force_close(); return; }
+            d.close();
+            glib::idle_add_local_once(move || {
+                if let Some(ui)=ui_ref.upgrade() {
+                    if let Err(e)=ui.app.borrow_mut().rename_tag(&tag_old,&newn){ ui.notify(&format!("No se pudo renombrar: {e}")); }
+                    else { ui.refresh(); }
+                }
+            });
         });
         dialog.set_default_widget(Some(&save_btn)); dialog.present(Some(&self.window));
     }
